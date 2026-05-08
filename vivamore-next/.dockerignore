@@ -1,0 +1,35 @@
+# Version control
+.git
+.gitignore
+
+# Dev artifacts
+node_modules
+.next
+.DS_Store
+
+# Env files (mount separately or use docker secrets)
+.env*.local
+.env
+
+# v0 / Vercel internal files
+__v0_runtime_loader.js
+__v0_devtools.tsx
+__v0_jsx-dev-runtime.ts
+.snowflake/
+.v0-trash/
+.vercel/
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Editor configs
+.vscode
+.idea
+*.swp
+*.swo
+
+# OS files
+Thumbs.db
