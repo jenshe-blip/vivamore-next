@@ -6,10 +6,12 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { WhatsAppButton } from "@/components/whatsapp-button"
-import { Calendar, Users, Clock, CheckCircle2 } from "lucide-react"
+import { Calendar, Users, Clock, CheckCircle2, Loader2 } from "lucide-react"
 
 export default function PlanEventPage() {
   const [isSubmitted, setIsSubmitted] = useState(false)
+  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState("")
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -21,9 +23,25 @@ export default function PlanEventPage() {
     message: "",
   })
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    setIsSubmitted(true)
+    setIsLoading(true)
+    setError("")
+
+    try {
+      const res = await fetch("/api/send-email", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ formType: "plan-event", ...formData }),
+      })
+
+      if (!res.ok) throw new Error("Failed to send")
+      setIsSubmitted(true)
+    } catch {
+      setError("Something went wrong. Please try again or contact us directly.")
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
@@ -241,10 +259,22 @@ export default function PlanEventPage() {
                 <Button 
                   type="submit"
                   size="lg"
+                  disabled={isLoading}
                   className="w-full bg-maroon text-white hover:bg-maroon/90 rounded-full py-6 text-lg"
                 >
-                  Submit Inquiry
+                  {isLoading ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Sending...
+                    </>
+                  ) : (
+                    "Submit Inquiry"
+                  )}
                 </Button>
+
+                {error && (
+                  <p className="text-red-600 text-sm text-center">{error}</p>
+                )}
 
                 <p className="text-center text-sm text-muted-foreground">
                   Or contact us directly via WhatsApp at{" "}

@@ -1,6 +1,9 @@
+"use client"
+
+import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { WhatsAppButton } from "@/components/whatsapp-button"
-import { MapPin, Phone, Mail, Clock, Car } from "lucide-react"
+import { MapPin, Phone, Mail, Clock, Car, CheckCircle2, Loader2 } from "lucide-react"
 
 const contactInfo = [
   {
@@ -27,6 +30,44 @@ const contactInfo = [
 ]
 
 export default function ContactPage() {
+  const [isSubmitted, setIsSubmitted] = useState(false)
+  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState("")
+  const [formData, setFormData] = useState({
+    name: "",
+    email: "",
+    phone: "",
+    subject: "",
+    message: "",
+  })
+
+  const handleChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
+  ) => {
+    setFormData((prev) => ({ ...prev, [e.target.id]: e.target.value }))
+  }
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setIsLoading(true)
+    setError("")
+
+    try {
+      const res = await fetch("/api/send-email", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ formType: "contact", ...formData }),
+      })
+
+      if (!res.ok) throw new Error("Failed to send")
+      setIsSubmitted(true)
+    } catch {
+      setError("Something went wrong. Please try again or contact us directly.")
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
   return (
     <>
       {/* Map Section */}
@@ -98,79 +139,115 @@ export default function ContactPage() {
               </p>
             </div>
 
-            <form className="space-y-6 bg-white p-8 rounded-lg shadow-sm">
-              <div className="grid md:grid-cols-2 gap-6">
+            {isSubmitted ? (
+              <div className="bg-white p-10 rounded-lg shadow-sm text-center">
+                <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                  <CheckCircle2 className="w-10 h-10 text-green-600" />
+                </div>
+                <h3 className="font-serif text-2xl font-bold text-maroon mb-3">Message Sent!</h3>
+                <p className="text-muted-foreground">
+                  Thank you for reaching out. We&apos;ll get back to you as soon as possible.
+                </p>
+              </div>
+            ) : (
+              <form onSubmit={handleSubmit} className="space-y-6 bg-white p-8 rounded-lg shadow-sm">
+                <div className="grid md:grid-cols-2 gap-6">
+                  <div>
+                    <label htmlFor="name" className="block text-sm font-medium text-foreground mb-2">
+                      Name
+                    </label>
+                    <input
+                      type="text"
+                      id="name"
+                      value={formData.name}
+                      onChange={handleChange}
+                      required
+                      className="w-full px-4 py-3 rounded-lg border border-border focus:outline-none focus:ring-2 focus:ring-gold"
+                      placeholder="Your name"
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="email" className="block text-sm font-medium text-foreground mb-2">
+                      Email
+                    </label>
+                    <input
+                      type="email"
+                      id="email"
+                      value={formData.email}
+                      onChange={handleChange}
+                      required
+                      className="w-full px-4 py-3 rounded-lg border border-border focus:outline-none focus:ring-2 focus:ring-gold"
+                      placeholder="your@email.com"
+                    />
+                  </div>
+                </div>
+
                 <div>
-                  <label htmlFor="name" className="block text-sm font-medium text-foreground mb-2">
-                    Name
+                  <label htmlFor="phone" className="block text-sm font-medium text-foreground mb-2">
+                    Phone
                   </label>
                   <input
-                    type="text"
-                    id="name"
+                    type="tel"
+                    id="phone"
+                    value={formData.phone}
+                    onChange={handleChange}
                     className="w-full px-4 py-3 rounded-lg border border-border focus:outline-none focus:ring-2 focus:ring-gold"
-                    placeholder="Your name"
+                    placeholder="+60 12-345 6789"
                   />
                 </div>
+
                 <div>
-                  <label htmlFor="email" className="block text-sm font-medium text-foreground mb-2">
-                    Email
+                  <label htmlFor="subject" className="block text-sm font-medium text-foreground mb-2">
+                    Subject
                   </label>
-                  <input
-                    type="email"
-                    id="email"
-                    className="w-full px-4 py-3 rounded-lg border border-border focus:outline-none focus:ring-2 focus:ring-gold"
-                    placeholder="your@email.com"
+                  <select
+                    id="subject"
+                    value={formData.subject}
+                    onChange={handleChange}
+                    className="w-full px-4 py-3 rounded-lg border border-border focus:outline-none focus:ring-2 focus:ring-gold bg-white"
+                  >
+                    <option value="">Select a subject</option>
+                    <option value="Reservation Inquiry">Reservation Inquiry</option>
+                    <option value="Event Planning">Event Planning</option>
+                    <option value="Feedback">Feedback</option>
+                    <option value="Other">Other</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label htmlFor="message" className="block text-sm font-medium text-foreground mb-2">
+                    Message
+                  </label>
+                  <textarea
+                    id="message"
+                    value={formData.message}
+                    onChange={handleChange}
+                    rows={5}
+                    className="w-full px-4 py-3 rounded-lg border border-border focus:outline-none focus:ring-2 focus:ring-gold resize-none"
+                    placeholder="Your message..."
                   />
                 </div>
-              </div>
 
-              <div>
-                <label htmlFor="phone" className="block text-sm font-medium text-foreground mb-2">
-                  Phone
-                </label>
-                <input
-                  type="tel"
-                  id="phone"
-                  className="w-full px-4 py-3 rounded-lg border border-border focus:outline-none focus:ring-2 focus:ring-gold"
-                  placeholder="+60 12-345 6789"
-                />
-              </div>
+                {error && (
+                  <p className="text-red-600 text-sm text-center">{error}</p>
+                )}
 
-              <div>
-                <label htmlFor="subject" className="block text-sm font-medium text-foreground mb-2">
-                  Subject
-                </label>
-                <select
-                  id="subject"
-                  className="w-full px-4 py-3 rounded-lg border border-border focus:outline-none focus:ring-2 focus:ring-gold bg-white"
+                <Button
+                  type="submit"
+                  disabled={isLoading}
+                  className="w-full bg-maroon text-white hover:bg-maroon/90 rounded-full py-6"
                 >
-                  <option value="">Select a subject</option>
-                  <option value="reservation">Reservation Inquiry</option>
-                  <option value="event">Event Planning</option>
-                  <option value="feedback">Feedback</option>
-                  <option value="other">Other</option>
-                </select>
-              </div>
-
-              <div>
-                <label htmlFor="message" className="block text-sm font-medium text-foreground mb-2">
-                  Message
-                </label>
-                <textarea
-                  id="message"
-                  rows={5}
-                  className="w-full px-4 py-3 rounded-lg border border-border focus:outline-none focus:ring-2 focus:ring-gold resize-none"
-                  placeholder="Your message..."
-                />
-              </div>
-
-              <Button
-                type="submit"
-                className="w-full bg-maroon text-white hover:bg-maroon/90 rounded-full py-6"
-              >
-                Send Message
-              </Button>
-            </form>
+                  {isLoading ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Sending...
+                    </>
+                  ) : (
+                    "Send Message"
+                  )}
+                </Button>
+              </form>
+            )}
           </div>
         </div>
       </section>
