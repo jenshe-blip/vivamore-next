@@ -2,8 +2,10 @@
 
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
+import { FieldError } from "@/components/ui/field"
 import { WhatsAppButton } from "@/components/whatsapp-button"
 import { MapPin, Phone, Mail, Clock, Car, CheckCircle2, Loader2 } from "lucide-react"
+import { EMAIL_RE } from "@/lib/validate"
 
 const contactInfo = [
   {
@@ -50,14 +52,12 @@ export default function ContactPage() {
 
   const validateForm = (): boolean => {
     const errors: Partial<typeof formData> = {}
-    if (!formData.name.trim() || formData.name.trim().length < 2)
-      errors.name = "Please enter your name (at least 2 characters)"
-    if (!formData.email.trim())
-      errors.email = "Email is required"
-    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email))
-      errors.email = "Enter a valid email address"
-    if (!formData.message.trim() || formData.message.trim().length < 10)
-      errors.message = "Message must be at least 10 characters"
+    const name = formData.name.trim()
+    if (!name || name.length < 2) errors.name = "Please enter your name (at least 2 characters)"
+    if (!formData.email.trim()) errors.email = "Email is required"
+    else if (!EMAIL_RE.test(formData.email)) errors.email = "Enter a valid email address"
+    const message = formData.message.trim()
+    if (!message || message.length < 10) errors.message = "Message must be at least 10 characters"
     setFormErrors(errors)
     return Object.keys(errors).length === 0
   }
@@ -183,7 +183,7 @@ export default function ContactPage() {
                       className={`w-full px-4 py-3 rounded-lg border focus:outline-none focus:ring-2 focus:ring-gold ${formErrors.name ? "border-red-500" : "border-border"}`}
                       placeholder="Your name"
                     />
-                    {formErrors.name && <p className="mt-1 text-xs text-red-600">{formErrors.name}</p>}
+                    <FieldError>{formErrors.name}</FieldError>
                   </div>
                   <div>
                     <label htmlFor="email" className="block text-sm font-medium text-foreground mb-2">
@@ -197,7 +197,7 @@ export default function ContactPage() {
                       className={`w-full px-4 py-3 rounded-lg border focus:outline-none focus:ring-2 focus:ring-gold ${formErrors.email ? "border-red-500" : "border-border"}`}
                       placeholder="your@email.com"
                     />
-                    {formErrors.email && <p className="mt-1 text-xs text-red-600">{formErrors.email}</p>}
+                    <FieldError>{formErrors.email}</FieldError>
                   </div>
                 </div>
 
@@ -245,7 +245,7 @@ export default function ContactPage() {
                     className={`w-full px-4 py-3 rounded-lg border focus:outline-none focus:ring-2 focus:ring-gold resize-none ${formErrors.message ? "border-red-500" : "border-border"}`}
                     placeholder="Your message..."
                   />
-                  {formErrors.message && <p className="mt-1 text-xs text-red-600">{formErrors.message}</p>}
+                  <FieldError>{formErrors.message}</FieldError>
                 </div>
 
                 {error && (

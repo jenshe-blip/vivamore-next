@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import nodemailer from "nodemailer"
+import { EMAIL_RE } from "@/lib/validate"
 
-// Rate limiting: 5 submissions per IP per 10 minutes
 const rateLimit = new Map<string, { count: number; resetAt: number }>()
 const RATE_LIMIT_MAX = 5
 const RATE_LIMIT_WINDOW_MS = 10 * 60 * 1000
@@ -10,6 +10,7 @@ function checkRateLimit(ip: string): boolean {
   const now = Date.now()
   const entry = rateLimit.get(ip)
   if (!entry || now > entry.resetAt) {
+    rateLimit.delete(ip)
     rateLimit.set(ip, { count: 1, resetAt: now + RATE_LIMIT_WINDOW_MS })
     return true
   }
@@ -32,8 +33,7 @@ function sanitize(val: unknown, maxLen: number): string {
   return val.trim().slice(0, maxLen).replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, "")
 }
 
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-const PHONE_RE = /^[+\d\s\-(). ]{0,20}$/
+const PHONE_RE = /^[+\d\s\-().]*$/
 
 const ALLOWED_SUBJECTS = new Set(["", "Reservation Inquiry", "Event Planning", "Feedback", "Other"])
 const ALLOWED_EVENT_TYPES = new Set(["wedding", "engagement", "corporate", "annual-dinner", "birthday", "anniversary", "other"])
@@ -67,13 +67,29 @@ const BUDGET_LABELS: Record<string, string> = {
   "above-100k": "Above RM 100,000",
 }
 
+const transporter = nodemailer.createTransport({
+  host: process.env.SMTP_HOST,
+  port: Number(process.env.SMTP_PORT) || 587,
+  secure: process.env.SMTP_SECURE === "true",
+  auth: {
+    user: process.env.SMTP_USER,
+    pass: process.env.SMTP_PASS,
+  },
+})
+
 type Fields = Record<string, string>
 
-function validateContact(f: Fields): string | null {
+function validateCommon(f: Fields): string | null {
   if (!f.name || f.name.length < 2) return "Name must be at least 2 characters"
   if (f.name.length > 100) return "Name is too long"
   if (!f.email) return "Email is required"
   if (!EMAIL_RE.test(f.email) || f.email.length > 254) return "Invalid email address"
+  return null
+}
+
+function validateContact(f: Fields): string | null {
+  const common = validateCommon(f)
+  if (common) return common
   if (f.phone && !PHONE_RE.test(f.phone)) return "Invalid phone number"
   if (!ALLOWED_SUBJECTS.has(f.subject)) return "Invalid subject selection"
   if (!f.message || f.message.length < 10) return "Message must be at least 10 characters"
@@ -82,10 +98,8 @@ function validateContact(f: Fields): string | null {
 }
 
 function validateEvent(f: Fields): string | null {
-  if (!f.name || f.name.length < 2) return "Name must be at least 2 characters"
-  if (f.name.length > 100) return "Name is too long"
-  if (!f.email) return "Email is required"
-  if (!EMAIL_RE.test(f.email) || f.email.length > 254) return "Invalid email address"
+  const common = validateCommon(f)
+  if (common) return common
   if (!f.phone) return "Phone number is required"
   if (!PHONE_RE.test(f.phone)) return "Invalid phone number"
   if (!f.eventType || !ALLOWED_EVENT_TYPES.has(f.eventType)) return "Please select a valid event type"
@@ -137,17 +151,12 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: validationError }, { status: 422 })
     }
 
-    const e = Object.fromEntries(Object.entries(fields).map(([k, v]) => [k, escapeHtml(v)]))
-
-    const transporter = nodemailer.createTransport({
-      host: process.env.SMTP_HOST,
-      port: Number(process.env.SMTP_PORT) || 587,
-      secure: process.env.SMTP_SECURE === "true",
-      auth: {
-        user: process.env.SMTP_USER,
-        pass: process.env.SMTP_PASS,
-      },
-    })
+    const e = {
+      ...Object.fromEntries(Object.entries(fields).map(([k, v]) => [k, escapeHtml(v)])),
+      eventTypeLabel: escapeHtml(EVENT_TYPE_LABELS[fields.eventType] ?? fields.eventType),
+      guestCountLabel: escapeHtml(GUEST_COUNT_LABELS[fields.guestCount] ?? fields.guestCount),
+      budgetLabel: escapeHtml(BUDGET_LABELS[fields.budget] ?? "Not specified"),
+    }
 
     const toEmail = process.env.CONTACT_EMAIL || process.env.SMTP_USER || ""
 
@@ -213,7 +222,7 @@ export async function POST(req: NextRequest) {
               </tr>
               <tr>
                 <td style="padding: 10px 0; border-bottom: 1px solid #f3f4f6; color: #6b7280; font-size: 14px;">Event Type</td>
-                <td style="padding: 10px 0; border-bottom: 1px solid #f3f4f6; font-weight: 600; color: #111827;">${escapeHtml(EVENT_TYPE_LABELS[fields.eventType] ?? fields.eventType)}</td>
+                <td style="padding: 10px 0; border-bottom: 1px solid #f3f4f6; font-weight: 600; color: #111827;">${e.eventTypeLabel}</td>
               </tr>
               <tr>
                 <td style="padding: 10px 0; border-bottom: 1px solid #f3f4f6; color: #6b7280; font-size: 14px;">Preferred Date</td>
@@ -221,11 +230,11 @@ export async function POST(req: NextRequest) {
               </tr>
               <tr>
                 <td style="padding: 10px 0; border-bottom: 1px solid #f3f4f6; color: #6b7280; font-size: 14px;">Expected Guests</td>
-                <td style="padding: 10px 0; border-bottom: 1px solid #f3f4f6; font-weight: 600; color: #111827;">${escapeHtml(GUEST_COUNT_LABELS[fields.guestCount] ?? fields.guestCount)}</td>
+                <td style="padding: 10px 0; border-bottom: 1px solid #f3f4f6; font-weight: 600; color: #111827;">${e.guestCountLabel}</td>
               </tr>
               <tr>
                 <td style="padding: 10px 0; border-bottom: 1px solid #f3f4f6; color: #6b7280; font-size: 14px;">Budget Range</td>
-                <td style="padding: 10px 0; border-bottom: 1px solid #f3f4f6; font-weight: 600; color: #111827;">${escapeHtml(BUDGET_LABELS[fields.budget] ?? "Not specified")}</td>
+                <td style="padding: 10px 0; border-bottom: 1px solid #f3f4f6; font-weight: 600; color: #111827;">${e.budgetLabel}</td>
               </tr>
               <tr>
                 <td style="padding: 10px 0; color: #6b7280; font-size: 14px; vertical-align: top;">Additional Details</td>
@@ -239,8 +248,6 @@ export async function POST(req: NextRequest) {
         </div>
       `
     }
-
-    await transporter.verify()
 
     await transporter.sendMail({
       from: `"Vivamore Website" <${process.env.SMTP_USER}>`,

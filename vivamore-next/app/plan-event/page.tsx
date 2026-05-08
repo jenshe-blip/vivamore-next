@@ -2,11 +2,13 @@
 
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
+import { FieldError } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { WhatsAppButton } from "@/components/whatsapp-button"
 import { Calendar, Users, Clock, CheckCircle2, Loader2 } from "lucide-react"
+import { EMAIL_RE } from "@/lib/validate"
 
 export default function PlanEventPage() {
   const [isSubmitted, setIsSubmitted] = useState(false)
@@ -26,22 +28,16 @@ export default function PlanEventPage() {
 
   const validateForm = (): boolean => {
     const errors: Partial<typeof formData> = {}
-    if (!formData.name.trim() || formData.name.trim().length < 2)
-      errors.name = "Please enter your name (at least 2 characters)"
-    if (!formData.email.trim())
-      errors.email = "Email is required"
-    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email))
-      errors.email = "Enter a valid email address"
-    if (!formData.phone.trim())
-      errors.phone = "Phone number is required"
-    if (!formData.eventType)
-      errors.eventType = "Please select an event type"
-    if (!formData.eventDate)
-      errors.eventDate = "Please select a preferred date"
+    const name = formData.name.trim()
+    if (!name || name.length < 2) errors.name = "Please enter your name (at least 2 characters)"
+    if (!formData.email.trim()) errors.email = "Email is required"
+    else if (!EMAIL_RE.test(formData.email)) errors.email = "Enter a valid email address"
+    if (!formData.phone.trim()) errors.phone = "Phone number is required"
+    if (!formData.eventType) errors.eventType = "Please select an event type"
+    if (!formData.eventDate) errors.eventDate = "Please select a preferred date"
     else if (formData.eventDate < new Date().toISOString().split("T")[0])
       errors.eventDate = "Please select a future date"
-    if (!formData.guestCount)
-      errors.guestCount = "Please select expected guest count"
+    if (!formData.guestCount) errors.guestCount = "Please select expected guest count"
     setFormErrors(errors)
     return Object.keys(errors).length === 0
   }
@@ -166,7 +162,7 @@ export default function PlanEventPage() {
                       placeholder="Your full name"
                       className={`rounded-lg ${formErrors.name ? "border-red-500" : ""}`}
                     />
-                    {formErrors.name && <p className="text-xs text-red-600">{formErrors.name}</p>}
+                    <FieldError>{formErrors.name}</FieldError>
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="email">Email Address *</Label>
@@ -179,7 +175,7 @@ export default function PlanEventPage() {
                       placeholder="your@email.com"
                       className={`rounded-lg ${formErrors.email ? "border-red-500" : ""}`}
                     />
-                    {formErrors.email && <p className="text-xs text-red-600">{formErrors.email}</p>}
+                    <FieldError>{formErrors.email}</FieldError>
                   </div>
                 </div>
 
@@ -195,7 +191,7 @@ export default function PlanEventPage() {
                       placeholder="+60 12 345 6789"
                       className={`rounded-lg ${formErrors.phone ? "border-red-500" : ""}`}
                     />
-                    {formErrors.phone && <p className="text-xs text-red-600">{formErrors.phone}</p>}
+                    <FieldError>{formErrors.phone}</FieldError>
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="eventType">Event Type *</Label>
@@ -215,7 +211,7 @@ export default function PlanEventPage() {
                       <option value="anniversary">Anniversary</option>
                       <option value="other">Other</option>
                     </select>
-                    {formErrors.eventType && <p className="text-xs text-red-600">{formErrors.eventType}</p>}
+                    <FieldError>{formErrors.eventType}</FieldError>
                   </div>
                 </div>
 
@@ -230,7 +226,7 @@ export default function PlanEventPage() {
                       onChange={handleChange}
                       className={`rounded-lg ${formErrors.eventDate ? "border-red-500" : ""}`}
                     />
-                    {formErrors.eventDate && <p className="text-xs text-red-600">{formErrors.eventDate}</p>}
+                    <FieldError>{formErrors.eventDate}</FieldError>
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="guestCount">Expected Guests *</Label>
@@ -248,7 +244,7 @@ export default function PlanEventPage() {
                       <option value="200-300">200 - 300 guests</option>
                       <option value="300+">300+ guests</option>
                     </select>
-                    {formErrors.guestCount && <p className="text-xs text-red-600">{formErrors.guestCount}</p>}
+                    <FieldError>{formErrors.guestCount}</FieldError>
                   </div>
                 </div>
 
