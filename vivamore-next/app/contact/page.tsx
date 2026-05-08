@@ -40,6 +40,7 @@ export default function ContactPage() {
     subject: "",
     message: "",
   })
+  const [formErrors, setFormErrors] = useState<Partial<typeof formData>>({})
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
@@ -47,8 +48,23 @@ export default function ContactPage() {
     setFormData((prev) => ({ ...prev, [e.target.id]: e.target.value }))
   }
 
+  const validateForm = (): boolean => {
+    const errors: Partial<typeof formData> = {}
+    if (!formData.name.trim() || formData.name.trim().length < 2)
+      errors.name = "Please enter your name (at least 2 characters)"
+    if (!formData.email.trim())
+      errors.email = "Email is required"
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email))
+      errors.email = "Enter a valid email address"
+    if (!formData.message.trim() || formData.message.trim().length < 10)
+      errors.message = "Message must be at least 10 characters"
+    setFormErrors(errors)
+    return Object.keys(errors).length === 0
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (!validateForm()) return
     setIsLoading(true)
     setError("")
 
@@ -59,10 +75,13 @@ export default function ContactPage() {
         body: JSON.stringify({ formType: "contact", ...formData }),
       })
 
-      if (!res.ok) throw new Error("Failed to send")
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        throw new Error(data.error || "Failed to send")
+      }
       setIsSubmitted(true)
-    } catch {
-      setError("Something went wrong. Please try again or contact us directly.")
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Something went wrong. Please try again or contact us directly.")
     } finally {
       setIsLoading(false)
     }
@@ -161,10 +180,10 @@ export default function ContactPage() {
                       id="name"
                       value={formData.name}
                       onChange={handleChange}
-                      required
-                      className="w-full px-4 py-3 rounded-lg border border-border focus:outline-none focus:ring-2 focus:ring-gold"
+                      className={`w-full px-4 py-3 rounded-lg border focus:outline-none focus:ring-2 focus:ring-gold ${formErrors.name ? "border-red-500" : "border-border"}`}
                       placeholder="Your name"
                     />
+                    {formErrors.name && <p className="mt-1 text-xs text-red-600">{formErrors.name}</p>}
                   </div>
                   <div>
                     <label htmlFor="email" className="block text-sm font-medium text-foreground mb-2">
@@ -175,10 +194,10 @@ export default function ContactPage() {
                       id="email"
                       value={formData.email}
                       onChange={handleChange}
-                      required
-                      className="w-full px-4 py-3 rounded-lg border border-border focus:outline-none focus:ring-2 focus:ring-gold"
+                      className={`w-full px-4 py-3 rounded-lg border focus:outline-none focus:ring-2 focus:ring-gold ${formErrors.email ? "border-red-500" : "border-border"}`}
                       placeholder="your@email.com"
                     />
+                    {formErrors.email && <p className="mt-1 text-xs text-red-600">{formErrors.email}</p>}
                   </div>
                 </div>
 
@@ -223,9 +242,10 @@ export default function ContactPage() {
                     value={formData.message}
                     onChange={handleChange}
                     rows={5}
-                    className="w-full px-4 py-3 rounded-lg border border-border focus:outline-none focus:ring-2 focus:ring-gold resize-none"
+                    className={`w-full px-4 py-3 rounded-lg border focus:outline-none focus:ring-2 focus:ring-gold resize-none ${formErrors.message ? "border-red-500" : "border-border"}`}
                     placeholder="Your message..."
                   />
+                  {formErrors.message && <p className="mt-1 text-xs text-red-600">{formErrors.message}</p>}
                 </div>
 
                 {error && (

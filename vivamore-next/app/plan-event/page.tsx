@@ -22,9 +22,33 @@ export default function PlanEventPage() {
     budget: "",
     message: "",
   })
+  const [formErrors, setFormErrors] = useState<Partial<typeof formData>>({})
+
+  const validateForm = (): boolean => {
+    const errors: Partial<typeof formData> = {}
+    if (!formData.name.trim() || formData.name.trim().length < 2)
+      errors.name = "Please enter your name (at least 2 characters)"
+    if (!formData.email.trim())
+      errors.email = "Email is required"
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email))
+      errors.email = "Enter a valid email address"
+    if (!formData.phone.trim())
+      errors.phone = "Phone number is required"
+    if (!formData.eventType)
+      errors.eventType = "Please select an event type"
+    if (!formData.eventDate)
+      errors.eventDate = "Please select a preferred date"
+    else if (formData.eventDate < new Date().toISOString().split("T")[0])
+      errors.eventDate = "Please select a future date"
+    if (!formData.guestCount)
+      errors.guestCount = "Please select expected guest count"
+    setFormErrors(errors)
+    return Object.keys(errors).length === 0
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (!validateForm()) return
     setIsLoading(true)
     setError("")
 
@@ -35,10 +59,13 @@ export default function PlanEventPage() {
         body: JSON.stringify({ formType: "plan-event", ...formData }),
       })
 
-      if (!res.ok) throw new Error("Failed to send")
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        throw new Error(data.error || "Failed to send")
+      }
       setIsSubmitted(true)
-    } catch {
-      setError("Something went wrong. Please try again or contact us directly.")
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Something went wrong. Please try again or contact us directly.")
     } finally {
       setIsLoading(false)
     }
@@ -137,9 +164,9 @@ export default function PlanEventPage() {
                       value={formData.name}
                       onChange={handleChange}
                       placeholder="Your full name"
-                      required
-                      className="rounded-lg"
+                      className={`rounded-lg ${formErrors.name ? "border-red-500" : ""}`}
                     />
+                    {formErrors.name && <p className="text-xs text-red-600">{formErrors.name}</p>}
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="email">Email Address *</Label>
@@ -150,9 +177,9 @@ export default function PlanEventPage() {
                       value={formData.email}
                       onChange={handleChange}
                       placeholder="your@email.com"
-                      required
-                      className="rounded-lg"
+                      className={`rounded-lg ${formErrors.email ? "border-red-500" : ""}`}
                     />
+                    {formErrors.email && <p className="text-xs text-red-600">{formErrors.email}</p>}
                   </div>
                 </div>
 
@@ -166,9 +193,9 @@ export default function PlanEventPage() {
                       value={formData.phone}
                       onChange={handleChange}
                       placeholder="+60 12 345 6789"
-                      required
-                      className="rounded-lg"
+                      className={`rounded-lg ${formErrors.phone ? "border-red-500" : ""}`}
                     />
+                    {formErrors.phone && <p className="text-xs text-red-600">{formErrors.phone}</p>}
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="eventType">Event Type *</Label>
@@ -177,8 +204,7 @@ export default function PlanEventPage() {
                       name="eventType"
                       value={formData.eventType}
                       onChange={handleChange}
-                      required
-                      className="w-full h-10 px-3 rounded-lg border border-input bg-background text-sm"
+                      className={`w-full h-10 px-3 rounded-lg border bg-background text-sm ${formErrors.eventType ? "border-red-500" : "border-input"}`}
                     >
                       <option value="">Select event type</option>
                       <option value="wedding">Wedding Reception</option>
@@ -189,6 +215,7 @@ export default function PlanEventPage() {
                       <option value="anniversary">Anniversary</option>
                       <option value="other">Other</option>
                     </select>
+                    {formErrors.eventType && <p className="text-xs text-red-600">{formErrors.eventType}</p>}
                   </div>
                 </div>
 
@@ -201,9 +228,9 @@ export default function PlanEventPage() {
                       type="date"
                       value={formData.eventDate}
                       onChange={handleChange}
-                      required
-                      className="rounded-lg"
+                      className={`rounded-lg ${formErrors.eventDate ? "border-red-500" : ""}`}
                     />
+                    {formErrors.eventDate && <p className="text-xs text-red-600">{formErrors.eventDate}</p>}
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="guestCount">Expected Guests *</Label>
@@ -212,8 +239,7 @@ export default function PlanEventPage() {
                       name="guestCount"
                       value={formData.guestCount}
                       onChange={handleChange}
-                      required
-                      className="w-full h-10 px-3 rounded-lg border border-input bg-background text-sm"
+                      className={`w-full h-10 px-3 rounded-lg border bg-background text-sm ${formErrors.guestCount ? "border-red-500" : "border-input"}`}
                     >
                       <option value="">Select guest count</option>
                       <option value="20-50">20 - 50 guests</option>
@@ -222,6 +248,7 @@ export default function PlanEventPage() {
                       <option value="200-300">200 - 300 guests</option>
                       <option value="300+">300+ guests</option>
                     </select>
+                    {formErrors.guestCount && <p className="text-xs text-red-600">{formErrors.guestCount}</p>}
                   </div>
                 </div>
 
